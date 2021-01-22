@@ -1,9 +1,9 @@
-# yolov4-custom-functions
+# License Plate Recognition with YOLOv4 and Tesseract OCR
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](LICENSE)
 
 
 ## Getting Started
-### Conda (Recommended)
+- ### Conda (Recommended)
 
 ```bash
 # Tensorflow CPU
@@ -15,7 +15,7 @@ conda env create -f conda-gpu.yml
 conda activate yolov4-gpu
 ```
 
-### Pip
+- ### Pip
 ```bash
 # TensorFlow CPU
 pip install -r requirements.txt
@@ -23,9 +23,10 @@ pip install -r requirements.txt
 # TensorFlow GPU
 pip install -r requirements-gpu.txt
 ```
-### Nvidia Driver (For GPU, if you are not using Conda Environment and haven't set up CUDA yet)
+- ### Nvidia Driver (For GPU, if you are not using Conda Environment and haven't set up CUDA yet)
 Make sure to use CUDA Toolkit version 10.1 as it is the proper version for the TensorFlow version used in this repository.
 https://developer.nvidia.com/cuda-10.1-download-archive-update2
+
 
 ## Downloading Official Pre-trained Weights
 YOLOv4 comes pre-trained and able to detect 80 classes. For easy demo purposes we will use the pre-trained weights.
@@ -34,6 +35,7 @@ Download pre-trained yolov4.weights file: https://drive.google.com/open?id=1cewM
 Copy and paste yolov4.weights from your downloads folder into the 'data' folder of this repository.
 
 If you want to use yolov4-tiny.weights, a smaller model that is faster at running detections but less accurate, download file here: https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v4_pre/yolov4-tiny.weights
+
 
 ## Using Custom Trained YOLOv4 Weights
 <strong>Learn How To Train Custom YOLOv4 Weights here: https://www.youtube.com/watch?v=mmj3nxGT2YQ </strong>
@@ -49,6 +51,7 @@ Update the code to point at your custom .names file as seen below. (my custom .n
 <p align="center"><img src="data/helpers/custom_config.png" width="640"\></p>
 
 <strong>Note:</strong> If you are using the pre-trained yolov4 then make sure that line 14 remains <strong>coco.names</strong>.
+
 
 ## YOLOv4 Using Tensorflow (tf, .pb model)
 To implement YOLOv4 using TensorFlow, first we convert the .weights into the corresponding TensorFlow model files and then run the model.
@@ -70,25 +73,6 @@ If you want to run yolov3 or yolov3-tiny change ``--model yolov3`` and .weights 
 
 <strong>Note:</strong> You can also run the detector on multiple images at once by changing the --images flag like such ``--images "./data/images/kite.jpg, ./data/images/dog.jpg"``
 
-### Result Image(s) (Regular TensorFlow)
-You can find the outputted image(s) showing the detections saved within the 'detections' folder.
-#### Pre-trained YOLOv4 Model Example
-<p align="center"><img src="data/helpers/result.png" width="640"\></p>
-
-### Result Video
-Video saves wherever you point --output flag to. If you don't set the flag then your video will not be saved with detections on it.
-<p align="center"><img src="data/helpers/demo.gif"\></p>
-
-## YOLOv4-Tiny using TensorFlow
-The following commands will allow you to run yolov4-tiny model.
-```
-# yolov4-tiny
-python save_model.py --weights ./data/yolov4-tiny.weights --output ./checkpoints/yolov4-tiny-416 --input_size 416 --model yolov4 --tiny
-
-# Run yolov4-tiny tensorflow model
-python detect.py --weights ./checkpoints/yolov4-tiny-416 --size 416 --model yolov4 --images ./data/images/kite.jpg --tiny
-```
-<a name="custom"/>
 
 ## Custom YOLOv4 Using TensorFlow
 The following commands will allow you to run your custom yolov4 model. (video and webcam commands work as well)
@@ -100,25 +84,6 @@ python save_model.py --weights ./data/custom.weights --output ./checkpoints/cust
 python detect.py --weights ./checkpoints/custom-416 --size 416 --model yolov4 --images ./data/images/car.jpg
 ```
 
-#### Custom YOLOv4 Model Example (see video link above to train this model)
-<p align="center"><img src="data/helpers/custom_result.png" width="640"\></p>
-
-## Custom Functions and Flags
-Here is how to use all the currently supported custom functions and flags that I have created.
-
-<a name="counting"/>
-
-### Crop Detections and Save Them as New Images
-I have created a custom function within the file [core/functions.py](https://github.com/theAIGuysCode/yolov4-custom-functions/blob/master/core/functions.py) that can be applied to any detect.py or detect_video.py commands in order to crop the YOLOv4 detections and save them each as their own new image. To crop detections all you need to do is add the `--crop` flag to any command. The resulting cropped images will be saved within the <strong>detections/crop/</strong> folder.
-  
- Example of crop flag added to command:
-```
-python detect.py --weights ./checkpoints/yolov4-416 --size 416 --model yolov4 --images ./data/images/dog.jpg --crop
-```
- Here is an example of one of the resulting cropped detections from the above command.
- <p align="center"><img src="data/helpers/crop_example.png" height="250"\></p>
- 
-<a name="license"/>
 
 ## License Plate Recognition Using Tesseract OCR
 I have created a custom function to feed Tesseract OCR the bounding box regions of license plates found by my custom YOLOv4 model in order to read and extract the license plate numbers. Thorough preprocessing is done on the license plate in order to correctly extract the license plate number from the image. The function that is in charge of doing the preprocessing and text extraction is called <strong>recognize_plate</strong> and can be found in the file [core/utils.py](https://github.com/theAIGuysCode/yolov4-custom-functions/blob/master/core/utils.py).
@@ -202,47 +167,6 @@ I have also implemented a generic use of Tesseract OCR with YOLOv4. By enabling 
 Example command (note this image doesn't have text so will not output anything, just meant to show how command is structured):
 ```
 python detect.py --weights ./checkpoints/yolov4-416 --size 416 --model yolov4 --images ./data/images/dog.jpg --ocr
-```
-
-## YOLOv4 Using TensorFlow Lite (.tflite model)
-Can also implement YOLOv4 using TensorFlow Lite. TensorFlow Lite is a much smaller model and perfect for mobile or edge devices (raspberry pi, etc).
-```bash
-# Save tf model for tflite converting
-python save_model.py --weights ./data/yolov4.weights --output ./checkpoints/yolov4-416 --input_size 416 --model yolov4 --framework tflite
-
-# yolov4
-python convert_tflite.py --weights ./checkpoints/yolov4-416 --output ./checkpoints/yolov4-416.tflite
-
-# yolov4 quantize float16
-python convert_tflite.py --weights ./checkpoints/yolov4-416 --output ./checkpoints/yolov4-416-fp16.tflite --quantize_mode float16
-
-# yolov4 quantize int8
-python convert_tflite.py --weights ./checkpoints/yolov4-416 --output ./checkpoints/yolov4-416-int8.tflite --quantize_mode int8 --dataset ./coco_dataset/coco/val207.txt
-
-# Run tflite model
-python detect.py --weights ./checkpoints/yolov4-416.tflite --size 416 --model yolov4 --images ./data/images/kite.jpg --framework tflite
-```
-### Result Image (TensorFlow Lite)
-You can find the outputted image(s) showing the detections saved within the 'detections' folder.
-#### TensorFlow Lite int8 Example
-<p align="center"><img src="data/helpers/result-int8.png" width="640"\></p>
-
-Yolov4 and Yolov4-tiny int8 quantization have some issues. I will try to fix that. You can try Yolov3 and Yolov3-tiny int8 quantization 
-
-## YOLOv4 Using TensorRT
-Can also implement YOLOv4 using TensorFlow's TensorRT. TensorRT is a high-performance inference optimizer and runtime that can be used to perform inference in lower precision (FP16 and INT8) on GPUs. TensorRT can allow up to 8x higher performance than regular TensorFlow.
-```bash# yolov3
-python save_model.py --weights ./data/yolov3.weights --output ./checkpoints/yolov3.tf --input_size 416 --model yolov3
-python convert_trt.py --weights ./checkpoints/yolov3.tf --quantize_mode float16 --output ./checkpoints/yolov3-trt-fp16-416
-
-# yolov3-tiny
-python save_model.py --weights ./data/yolov3-tiny.weights --output ./checkpoints/yolov3-tiny.tf --input_size 416 --tiny
-python convert_trt.py --weights ./checkpoints/yolov3-tiny.tf --quantize_mode float16 --output ./checkpoints/yolov3-tiny-trt-fp16-416
-
-# yolov4
-python save_model.py --weights ./data/yolov4.weights --output ./checkpoints/yolov4.tf --input_size 416 --model yolov4
-python convert_trt.py --weights ./checkpoints/yolov4.tf --quantize_mode float16 --output ./checkpoints/yolov4-trt-fp16-416
-python detect.py --weights ./checkpoints/yolov4-trt-fp16-416 --model yolov4 --images ./data/images/kite.jpg --framework trt
 ```
 
 ## Command Line Args Reference
