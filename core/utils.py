@@ -83,8 +83,8 @@ def recognize_plate(img, coords):
             text = None
     if plate_num != None:
         print("License Plate #: ", plate_num)
-    # cv2.imshow("Character's Segmented", im2)
-    # cv2.waitKey(0)
+    cv2.imshow("Character's Segmented", im2)
+    cv2.waitKey(0)
     return plate_num
 
 

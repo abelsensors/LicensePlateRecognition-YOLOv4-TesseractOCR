@@ -37,6 +37,7 @@ def compute_edgelets(image, sigma=2.):
     gray_img = color.rgb2gray(image)
     edges = feature.canny(gray_img, sigma)
     edges = Image.fromarray(edges)
+
     width, height = edges.size  # Get dimensions
     new_width = width - 10
     new_height = height - 10
@@ -50,20 +51,12 @@ def compute_edgelets(image, sigma=2.):
     edges = edges.crop((left, top, right, bottom))
     edges = np.array(edges)
 
-    """
-    edges = cv2.Canny(image, 150, 200, apertureSize=3)
-    kernel = np.ones((2, 2), np.uint8)
-    kernel2 = np.ones((2, 2), np.uint8)
-
-    edges = cv2.dilate(edges, kernel, iterations=1)
-    edges = cv2.erode(edges, kernel2, iterations=1)
-    """
     plt.figure(figsize=(10, 10))
     plt.imshow(edges)
     plt.show()
 
-    lines = transform.probabilistic_hough_line(edges, line_length=5,
-                                               line_gap=4)
+    lines = transform.probabilistic_hough_line(edges, line_length=3,
+                                               line_gap=2)
 
     locations = []
     directions = []
@@ -538,4 +531,4 @@ if __name__ == '__main__':
     image = image[:, :, :3]
     print("Rectifying {}".format(image_name))
     save_name = '.'.join(image_name.split('.')[:-1]) + '_warped.png'
-    io.imsave(save_name, rectify_image(image_name, 4, algorithm='independent', reestimate=True))
+    io.imsave(save_name, rectify_image(image_name, 4, algorithm='independent'))

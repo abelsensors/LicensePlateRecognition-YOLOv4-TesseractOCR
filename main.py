@@ -2,9 +2,9 @@ from pathlib import Path
 
 from absl.flags import FLAGS
 from absl import app, flags, logging
-
+import os
 from detect import detector
-
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
                     'path to weights file')
@@ -25,7 +25,7 @@ flags.DEFINE_boolean('plate', False, 'perform license plate recognition')
 
 def main(_argv):
     dataset_path = Path("data/images")
-    images = [str(dataset_path / "car2.jpg")]
+    images = [str(dataset_path / "car4.jpg")]
     detector(images)
 
 

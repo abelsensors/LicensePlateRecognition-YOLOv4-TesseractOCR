@@ -29,9 +29,10 @@ class Perspective(object):
         """
         img = self.source
         self.set_destination(img)
-        edges_objects = cv2.Canny(img, 20, 400, apertureSize=3)
-
-        return edges_objects
+        edges = cv2.Canny(img, 100, 200, apertureSize=3)
+        cv2.imshow("edges", edges)
+        cv2.waitKey(0)
+        return edges
 
     @staticmethod
     def contour_method(edges_objects):
@@ -40,16 +41,13 @@ class Perspective(object):
         """
         hull = None
         contours, hierarchy = cv2.findContours(edges_objects, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        print(hierarchy)
 
         for i, cnt in enumerate(contours):
             if hierarchy[0, i, 3] == -1 and cv2.contourArea(cnt) > 5000:
                 hull = cv2.convexHull(cnt, returnPoints=True)
                 break
-        print(hull)
-        length = len(hull)
 
-        print(length)
+        length = len(hull)
 
         coord = Coordinates()
         for i in range(0, length):
@@ -109,12 +107,12 @@ class Perspective(object):
 
 
 if __name__ == "__main__":
-    source = cv2.imread("dataset/car.png", 0)
-    pers_p = Perspective(source)
-    edges = pers_p.handle()
-    contour_coord = pers_p.contour_method(edges)
-    if contour_coord.quad_check():
-        contour_coord.calculate_centroid()
-        corners = contour_coord.calculateTRTLBRBL()
-        warpedImage, transformationMatrix = pers_p.transform(corners)
+    source_main = cv2.imread("dataset/card.png", 0)
+    pers_p = Perspective(source_main)
+    edges_main = pers_p.handle()
+    contour_coord_main = pers_p.contour_method(edges_main)
+    if contour_coord_main.quad_check():
+        contour_coord_main.calculate_centroid()
+        corners_main = contour_coord_main.calculateTRTLBRBL()
+        warpedImage, transformationMatrix = pers_p.transform(corners_main)
         pers_p.show_sharpen(warpedImage)

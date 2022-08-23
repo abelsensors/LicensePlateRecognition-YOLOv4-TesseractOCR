@@ -21,7 +21,7 @@ from tensorflow.compat.v1 import InteractiveSession
 from pathlib import Path
 
 
-def detector(images, labels: None):
+def detector(images, labels=None):
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
@@ -133,4 +133,3 @@ def detector(images, labels: None):
         cv2.imwrite(out_path, image)
         results.append(pred_bbox)
     return results
-

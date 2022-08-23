@@ -9,7 +9,7 @@ import numpy as np
 
 from PIL import Image
 
-from prespective_rectification.rectification2 import correct_perspective
+from prespective_rectification.wip.rectification2 import correct_perspective
 
 RESULTS = ['gray', 'blur', 'edges', 'lines', 'corners', 'final']
 
