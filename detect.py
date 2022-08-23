@@ -133,3 +133,4 @@ def detector(images, labels: None):
         cv2.imwrite(out_path, image)
         results.append(pred_bbox)
     return results
+
