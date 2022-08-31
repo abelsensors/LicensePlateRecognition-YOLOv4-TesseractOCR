@@ -7,6 +7,7 @@ import numpy as np
 import imutils
 from scipy.signal import savgol_filter
 import pandas as pd
+from sklearn import mixture
 from sklearn.cluster import KMeans
 
 from prespective_rectification.pre_process import pre_process
@@ -43,7 +44,6 @@ def draw_lines(img, lines, thickness=1):
     plt.show()
 
 
-
 def select_points_by_segment(point_start, point_end):
     mid_point = (point_start + point_end) // 2
     difference = int((point_end - point_start) * 0.25)
@@ -54,24 +54,67 @@ def select_points_by_segment(point_start, point_end):
 
 def plot_points(points, image):
     for point in points:
-        point = point[0]
+        if type(point[0]) == list:
+            point = point[0]
         plt.plot(point[0], point[1], marker='o', color="red")
     plt.imshow(image)
     plt.show()
 
 
-def get_intersection(polynomial_coeff_list):
+def get_intersection(polynomial_coeff_list, type_intersection="rho_theta"):
     # Get intersections with lines
     list_intersections = []
     for i, _ in enumerate(polynomial_coeff_list):
         for j, _ in enumerate(polynomial_coeff_list):
             if i != j:
-                # x0 = -(left_line[1] - right_line[1]) / (left_line[0] - right_line[0])
-                # y0 = x0 * left_line[0] + left_line[1]
-                x0 = (polynomial_coeff_list[i] - polynomial_coeff_list[j]).roots()
-                y0 = polynomial_coeff_list[i](x0)
-                list_intersections.append((x0, y0))
+                try:
+                    # x0 = -(left_line[1] - right_line[1]) / (left_line[0] - right_line[0])
+                    # y0 = x0 * left_line[0] + left_line[1]
+                    x0, y0 = None, None
+                    if type_intersection == "polynomial":
+                        x0 = (polynomial_coeff_list[i] - polynomial_coeff_list[j]).roots()
+                        y0 = polynomial_coeff_list[i](x0)
+                    elif type_intersection == "rho_theta":
+                        x0, y0 = intersection_rho_theta(polynomial_coeff_list[i], polynomial_coeff_list[j])
+                    elif type_intersection == "two_point":
+                        x0, y0 = two_point_intersection(polynomial_coeff_list[i], polynomial_coeff_list[j])
+
+                    list_intersections.append([x0, y0])
+                except:
+                    print("paralel")
     return list_intersections
+
+
+def intersection_rho_theta(line1, line2):
+    rho1, theta1 = line1
+    rho2, theta2 = line2
+    a = np.array([
+        [np.cos(theta1), np.sin(theta1)],
+        [np.cos(theta2), np.sin(theta2)]
+    ])
+    b = np.array([[rho1], [rho2]])
+    x0, y0 = np.linalg.solve(a, b)
+    x0, y0 = int(np.round(x0)), int(np.round(y0))
+    return x0, y0
+
+
+def two_point_intersection(line1, line2):
+    line1 = [[line1[0], line1[1]], [line1[2], line1[3]]]
+    line2 = [[line2[0], line2[1]], [line2[2], line2[3]]]
+    xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+
+    def det(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+
+    div = det(xdiff, ydiff)
+    if div == 0:
+        raise Exception('lines do not intersect')
+
+    d = (det(*line1), det(*line2))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    return x, y
 
 
 def old_script(image, masked_image):
@@ -158,25 +201,6 @@ def old_script(image, masked_image):
     plot_points(list_intersections, image)
 
 
-def line_intersection(line1, line2):
-    line1 = [[line1[0], line1[1]], [line1[2], line1[3]]]
-    line2 = [[line2[0], line2[1]], [line2[2], line2[3]]]
-    xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
-
-    def det(a, b):
-        return a[0] * b[1] - a[1] * b[0]
-
-    div = det(xdiff, ydiff)
-    if div == 0:
-        raise Exception('lines do not intersect')
-
-    d = (det(*line1), det(*line2))
-    x = det(d, xdiff) / div
-    y = det(d, ydiff) / div
-    return x, y
-
-
 def get_strong_lines(lines):
     strong_lines = np.zeros([4, 1, 2])
 
@@ -199,15 +223,26 @@ def get_strong_lines(lines):
     return strong_lines
 
 
+def filter_intersections(image, list_intersections):
+    height, width, _ = image.shape
+    filtered_intesersections = []
+    for intersection in list_intersections:
+        if intersection[0] > height or intersection[0] < 0 or intersection[1] > width or intersection[1] < 0:
+            continue
+        else:
+            filtered_intesersections.append(intersection)
+    return filtered_intesersections
+
+
 def main():
     # Read image
     image_name = "dataset/plate.png"
     image = cv2.imread(image_name)
+    height, width, _ = image.shape
     masked_image, cnts = pre_process(image)
     # lines = cv2.HoughLinesP(cnts, 1, np.pi / 180, 30, 10)
     lines = cv2.HoughLines(cnts, 1, np.pi / 180, 40)
     draw_lines(image, lines)
-
 
     lines_reduced = []
 
@@ -218,18 +253,15 @@ def main():
             theta -= np.pi
         lines_reduced.append([rho, theta])
 
-    list_intersections = []
+    list_intersections = get_intersection(lines_reduced)
+    list_intersections = filter_intersections(image, list_intersections)
 
-    for i, _ in enumerate(lines_reduced):
-        for j, _ in enumerate(lines_reduced):
-            if i != j:
-                list_intersections.append(get_intersection(lines_reduced[i]))
-
-    kmeans = KMeans(n_clusters=4, random_state=0)
+    # plot_points(list_intersections, image)
+    startpts = np.array([[0.0, 0.0], [0.0, height], [width, 0.0], [width, height]], np.float64)
+    kmeans = KMeans(n_clusters=4, init=startpts, n_init=1)
     kmeans.fit(list_intersections)
-    strong_lines = get_strong_lines(lines)
 
-    draw_lines(image, kmeans.cluster_centers_)
+    plot_points(kmeans.cluster_centers_, image)
 
     list_polynomials, two_points_list = [], []
     for line in lines:
@@ -253,16 +285,13 @@ def main():
     plt.imshow(image)
     plt.show()
 
-    list_intersections = get_intersection(centroid_coef)
+    list_intersections = get_intersection(centroid_coef, "polynomial")
     plot_points(list_intersections, image)
 
     kmeans = KMeans(n_clusters=4, random_state=0)
     kmeans.fit(two_points_list)
-    list_intersections = []
-    for i, _ in enumerate(kmeans.cluster_centers_):
-        for j, _ in enumerate(kmeans.cluster_centers_):
-            if i != j:
-                list_intersections.append(line_intersection(kmeans.cluster_centers_[i], kmeans.cluster_centers_[j]))
+
+    list_intersections = get_intersection(kmeans.cluster_centers_, "two_points")
     plot_points(list_intersections, image)
     draw_lines(image, kmeans.cluster_centers_)
 
