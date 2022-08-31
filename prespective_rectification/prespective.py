@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 
 from coordinates import Coordinates
+from prespective_rectification.manual_prespective import plot_points
+from prespective_rectification.pre_process import pre_process, get_masked_image, gather_contours
 
 
 class Perspective(object):
@@ -30,23 +32,25 @@ class Perspective(object):
         img = self.source
         self.set_destination(img)
         edges = cv2.Canny(img, 100, 200, apertureSize=3)
-        cv2.imshow("edges", edges)
-        cv2.waitKey(0)
-        return edges
+        # cv2.imshow("edges", edges)
+        # cv2.waitKey(0)
+        return img
 
-    @staticmethod
-    def contour_method(edges_objects):
+    def contour_method(self, edges_objects):
         """
         find the hull/ contour and the intersection points
         """
         hull = None
         contours, hierarchy = cv2.findContours(edges_objects, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        manual_contours = gather_contours(edges_objects)
 
         for i, cnt in enumerate(contours):
             if hierarchy[0, i, 3] == -1 and cv2.contourArea(cnt) > 5000:
+                plot_points(cnt, self.source)
                 hull = cv2.convexHull(cnt, returnPoints=True)
                 break
 
+        hull = cv2.convexHull(manual_contours, returnPoints=True)
         length = len(hull)
 
         coord = Coordinates()
@@ -63,8 +67,9 @@ class Perspective(object):
         constant = 100
         min_line_length = 10
         max_line_gap = 5
+
         coord = Coordinates()
-        lines = cv2.HoughLinesP(edges_objects, 1, np.pi / 180, constant, min_line_length, max_line_gap)
+        lines = cv2.HoughLinesP(edges_objects, 1, np.pi / 180, 30, 10)
         print(lines, type(lines))
         points = []
         for x1, y1, x2, y2 in lines[0]:
@@ -107,9 +112,16 @@ class Perspective(object):
 
 
 if __name__ == "__main__":
-    source_main = cv2.imread("dataset/card.png", 0)
+    source_main = cv2.imread("dataset/plate.png")
+
+    threshold, contours_main = pre_process(source_main)
+    source_main = (contours_main / 255).astype("uint8")
+    #source_main = get_masked_image(source_main[:, :, 0], contours_main)
+    # source_main = cv2.cvtColor(source_main, cv2.COLOR_BGR2GRAY)
+
     pers_p = Perspective(source_main)
     edges_main = pers_p.handle()
+
     contour_coord_main = pers_p.contour_method(edges_main)
     if contour_coord_main.quad_check():
         contour_coord_main.calculate_centroid()

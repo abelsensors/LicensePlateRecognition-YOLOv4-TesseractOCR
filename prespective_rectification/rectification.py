@@ -15,6 +15,9 @@ import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
 
+from prespective_rectification.manual_prespective import pre_process
+
+
 def compute_edgelets(image, sigma=2.):
     """Create edgelets as in the paper.
     Uses canny edge detection and then finds (small) lines using probabilstic
@@ -34,22 +37,10 @@ def compute_edgelets(image, sigma=2.):
     strengths: ndarray of shape (n_edgelets,)
         Length of the line segments detected for the edgelet.
     """
-    gray_img = color.rgb2gray(image)
-    edges = feature.canny(gray_img, sigma)
-    edges = Image.fromarray(edges)
+    edges = pre_process(image)
 
-    width, height = edges.size  # Get dimensions
-    new_width = width - 10
-    new_height = height - 10
-
-    left = (width - new_width) / 2
-    top = (height - new_height) / 2
-    right = (width + new_width) / 2
-    bottom = (height + new_height) / 2
-
-    # Crop the center of the image
-    edges = edges.crop((left, top, right, bottom))
-    edges = np.array(edges)
+    #edges = feature.canny(pre_processed_image, sigma)
+    #edges = Image.fromarray(edges)
 
     plt.figure(figsize=(10, 10))
     plt.imshow(edges)
@@ -76,7 +67,7 @@ def compute_edgelets(image, sigma=2.):
     directions = np.array(directions) / \
                  np.linalg.norm(directions, axis=1)[:, np.newaxis]
 
-    return (locations, directions, strengths)
+    return locations, directions, strengths
 
 
 def edgelet_lines(edgelets):
@@ -508,7 +499,7 @@ def rectify_image(image, clip_factor=6, algorithm='independent',
         vp2 = ransac_vanishing_point(edgelets2, 2000, threshold_inlier=5)
         if reestimate:
             vp2 = reestimate_model(vp2, edgelets2, 5)
-        vis_model(image, vp2)  # Visualize the vanishing point model
+        # vis_model(image, vp2)  # Visualize the vanishing point model
 
     elif algorithm == '3-line':
         focal_length = None
@@ -527,8 +518,10 @@ def rectify_image(image, clip_factor=6, algorithm='independent',
 
 if __name__ == '__main__':
     image_name = "dataset/plate.png"
-    image = io.imread(image_name)
-    image = image[:, :, :3]
+    image = cv2.imread(image_name)
+
+    # image = io.imread(image_name)
+    # image = image[:, :, :3]
     print("Rectifying {}".format(image_name))
     save_name = '.'.join(image_name.split('.')[:-1]) + '_warped.png'
-    io.imsave(save_name, rectify_image(image_name, 4, algorithm='independent'))
+    io.imsave(save_name, rectify_image(image, 4, algorithm='independent'))
