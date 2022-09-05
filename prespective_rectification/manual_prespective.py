@@ -1,3 +1,4 @@
+import math
 import random
 
 import cv2
@@ -44,17 +45,26 @@ def draw_lines(img, lines, thickness=1):
     plt.show()
 
 
-def select_points_by_segment(point_start, point_end):
-    mid_point = (point_start + point_end) // 2
-    difference = int((point_end - point_start) * 0.25)
-    marked_point_lower = mid_point - difference
-    marked_point_upper = mid_point + difference
+def select_points_by_segment(point_start, point_end, len_points):
+    if point_start > point_end:
+        moved_initial_point = len_points - point_start
+        mid_point = (moved_initial_point + point_end) // 2
+        difference = int((point_end - point_start) * 0.25)
+        marked_point_lower = mid_point - difference - moved_initial_point
+        marked_point_upper = mid_point + difference - moved_initial_point
+        if marked_point_lower < 0:
+            marked_point_lower = len_points + marked_point_lower
+    else:
+        mid_point = (point_start + point_end) // 2
+        difference = int((point_end - point_start) * 0.25)
+        marked_point_lower = mid_point - difference
+        marked_point_upper = mid_point + difference
     return marked_point_lower, marked_point_upper
 
 
 def plot_points(points, image):
     for point in points:
-        if type(point[0]) == list:
+        if type(point[0]) == list or type(point[0]) == np.ndarray:
             point = point[0]
         plt.plot(point[0], point[1], marker='o', color="red")
     plt.imshow(image)
@@ -75,7 +85,11 @@ def get_intersection(polynomial_coeff_list, type_intersection="rho_theta"):
                         x0 = (polynomial_coeff_list[i] - polynomial_coeff_list[j]).roots()
                         y0 = polynomial_coeff_list[i](x0)
                     elif type_intersection == "rho_theta":
-                        x0, y0 = intersection_rho_theta(polynomial_coeff_list[i], polynomial_coeff_list[j])
+                        points = intersection_rho_theta(polynomial_coeff_list[i], polynomial_coeff_list[j])
+                        if points is not None:
+                            x0, y0 = points
+                        else:
+                            continue
                     elif type_intersection == "two_point":
                         x0, y0 = two_point_intersection(polynomial_coeff_list[i], polynomial_coeff_list[j])
 
@@ -88,19 +102,22 @@ def get_intersection(polynomial_coeff_list, type_intersection="rho_theta"):
 def intersection_rho_theta(line1, line2):
     rho1, theta1 = line1
     rho2, theta2 = line2
-    a = np.array([
-        [np.cos(theta1), np.sin(theta1)],
-        [np.cos(theta2), np.sin(theta2)]
-    ])
-    b = np.array([[rho1], [rho2]])
-    x0, y0 = np.linalg.solve(a, b)
-    x0, y0 = int(np.round(x0)), int(np.round(y0))
-    return x0, y0
+    if abs(rho2 - rho1) > 30:
+        a = np.array([
+            [np.cos(theta1), np.sin(theta1)],
+            [np.cos(theta2), np.sin(theta2)]
+        ])
+        b = np.array([[rho1], [rho2]])
+        x0, y0 = np.linalg.solve(a, b)
+        x0, y0 = int(np.round(x0)), int(np.round(y0))
+        return x0, y0
+    else:
+        return None
 
 
 def two_point_intersection(line1, line2):
-    line1 = [[line1[0], line1[1]], [line1[2], line1[3]]]
-    line2 = [[line2[0], line2[1]], [line2[2], line2[3]]]
+    # line1 = [[line1[0], line1[1]], [line1[2], line1[3]]]
+    # line2 = [[line2[0], line2[1]], [line2[2], line2[3]]]
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -117,7 +134,58 @@ def two_point_intersection(line1, line2):
     return x, y
 
 
-def old_script(image, masked_image):
+def get_corners_abrupt_changes(cumulative_difference):
+    flag_off = True
+    total_cumulative = []
+    for i, element in enumerate(cumulative_difference):
+
+        if not element:
+
+            if flag_off:
+                current_cumulative = []
+                counter = 0
+
+                for series_contigous in cumulative_difference[i:]:
+                    if series_contigous:
+                        break
+                    counter += 1
+
+                    current_cumulative.append(i + counter)
+                total_cumulative.append(current_cumulative)
+                flag_off = False
+        else:
+            flag_off = True
+    total_cumulative = sorted(total_cumulative, key=lambda l: (len(l), l))
+    quadratic_changes = []
+
+    for change in total_cumulative[-2:]:
+        quadratic_changes.extend([change[0], change[len(change) - 1]])
+    quadratic_changes.sort()
+
+    return quadratic_changes
+
+
+def alternative_abrutp_chages(time_series_abrupt_changes):
+    points_abrupt = []
+    flag_off = True
+    for i, series in enumerate(time_series_abrupt_changes):
+        if series:
+            if flag_off:
+                counter = 0
+                for series_contigous in time_series_abrupt_changes[i:]:
+                    if not series_contigous:
+                        break
+                    counter += 1
+
+                points_abrupt.append(i + (counter // 2))
+                flag_off = False
+        else:
+            flag_off = True
+    points_abrupt.append(len(time_series_abrupt_changes) - 1)
+    return points_abrupt
+
+
+def abbrupt_changes_algorithm(image, masked_image):
     # gather and clean contours
     cnts = cv2.findContours(masked_image.astype("uint8"), cv2.RETR_EXTERNAL,
                             1)
@@ -145,48 +213,40 @@ def old_script(image, masked_image):
     smoothed_difference_y = savgol_filter(list_diference_y, 13, 5)  # window size 13, polynomial order 5
     smoothed_difference_x = savgol_filter(list_diference_x, 13, 5)  # window size 13, polynomial order 5
 
-    plt.plot(y_range, smoothed_difference_y)
-    plt.show()
+    # plt.plot(y_range, smoothed_difference_y)
+    # plt.show()
 
     plt.plot(y_range, smoothed_difference_x)
     plt.show()
 
-    s = pd.Series(smoothed_difference_y)
+    s = pd.Series(smoothed_difference_x)
     d = pd.Series(s.values[1:] - s.values[:-1], index=s.index[:-1]).abs()
 
-    a = .6
+    a = .7
     m = d.max()
+    print(d > m * a)
+
     r = d.rolling(3, min_periods=1, win_type='parzen').sum()
     n = r.max()
     time_series_abrupt_changes = r > n * a
-    points_abrupt = []
 
-    flag_off = True
-    for i, series in enumerate(time_series_abrupt_changes):
-        if series:
-            if flag_off:
-                counter = 0
-                for series_contigous in time_series_abrupt_changes[i:]:
-                    if not series_contigous:
-                        break
-                    counter += 1
-
-                points_abrupt.append(i + (counter // 2))
-                flag_off = False
-        else:
-            flag_off = True
-    points_abrupt.append(len(time_series_abrupt_changes) - 1)
+    points_abrupt = get_corners_abrupt_changes(time_series_abrupt_changes)
 
     # Get the lines of the borders
-    initial_point = 0
+    if len(points_abrupt) == 4:
+        initial_point = points_abrupt[-1]
+    else:
+        initial_point = 0
+    two_points_list = []
     polynomial_coeff_list = []
     points_corners_lines = []
     for point in points_abrupt:
-        plot_points(cleaned_cnts[initial_point:point], image)
+        # plot_points(cleaned_cnts[initial_point:point], image)
 
-        index = select_points_by_segment(initial_point, point)
+        index = select_points_by_segment(initial_point, point, len(time_series_abrupt_changes))
         lower_points = cnts[0][index[0]][0]
         upper_points = cnts[0][index[1]][0]
+        two_points_list.append([lower_points, upper_points])
         points_corners_lines.append(lower_points)
         points_corners_lines.append(upper_points)
         x_points = [lower_points[0], lower_points[1]]
@@ -197,8 +257,10 @@ def old_script(image, masked_image):
         initial_point = point
     plot_points(points_corners_lines, image)
 
-    list_intersections = get_intersection(polynomial_coeff_list)
+    list_intersections = get_intersection(two_points_list, "two_point")
     plot_points(list_intersections, image)
+    list_intersections = filter_intersections(image, list_intersections)
+    return list_intersections
 
 
 def get_strong_lines(lines):
@@ -227,20 +289,17 @@ def filter_intersections(image, list_intersections):
     height, width, _ = image.shape
     filtered_intesersections = []
     for intersection in list_intersections:
-        if intersection[0] > height or intersection[0] < 0 or intersection[1] > width or intersection[1] < 0:
+        if intersection[0] > width or intersection[0] < 0 or intersection[1] > height or intersection[1] < 0 or \
+                intersection in filtered_intesersections or len(filtered_intesersections) == 4:
             continue
         else:
             filtered_intesersections.append(intersection)
     return filtered_intesersections
 
 
-def main():
-    # Read image
-    image_name = "dataset/plate.png"
-    image = cv2.imread(image_name)
+def hough_implementations(image, cnts):
     height, width, _ = image.shape
-    masked_image, cnts = pre_process(image)
-    # lines = cv2.HoughLinesP(cnts, 1, np.pi / 180, 30, 10)
+
     lines = cv2.HoughLines(cnts, 1, np.pi / 180, 40)
     draw_lines(image, lines)
 
@@ -256,12 +315,14 @@ def main():
     list_intersections = get_intersection(lines_reduced)
     list_intersections = filter_intersections(image, list_intersections)
 
-    # plot_points(list_intersections, image)
+    plot_points(list_intersections, image)
     startpts = np.array([[0.0, 0.0], [0.0, height], [width, 0.0], [width, height]], np.float64)
     kmeans = KMeans(n_clusters=4, init=startpts, n_init=1)
     kmeans.fit(list_intersections)
 
     plot_points(kmeans.cluster_centers_, image)
+
+    lines = cv2.HoughLinesP(cnts, 1, np.pi / 180, 30, 10)
 
     list_polynomials, two_points_list = [], []
     for line in lines:
@@ -294,6 +355,40 @@ def main():
     list_intersections = get_intersection(kmeans.cluster_centers_, "two_points")
     plot_points(list_intersections, image)
     draw_lines(image, kmeans.cluster_centers_)
+
+
+def apply_homography():
+    pass
+
+
+def order_points(destinations, predicted):
+    ordered_predicted = []
+
+    for destination in destinations:
+        distances = []
+        for prediction in predicted:
+            distances.append(np.sqrt((destination[0] - prediction[0]) ** 2 + (destination[1] - prediction[1]) ** 2))
+        index = distances.index(min(distances))
+        ordered_predicted.append(predicted[index])
+    return ordered_predicted
+
+
+def main():
+    # Read image
+    image_name = "dataset/plate.png"
+    image = cv2.imread(image_name)
+    height, width, _ = image.shape
+    destination = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
+    masked_image, cnts = pre_process(image)
+    intersections = abbrupt_changes_algorithm(image, masked_image)
+    intersections = order_points(destination, intersections)
+    corners_points = np.float32(intersections)
+    transformation_matrix = cv2.getPerspectiveTransform(corners_points, destination)
+    min_val = np.min(destination[np.nonzero(destination)])
+    max_val = np.max(destination[np.nonzero(destination)])
+    warped_image = cv2.warpPerspective(image, transformation_matrix, (width, height))
+    plt.imshow(warped_image)
+    plt.show()
 
 
 if __name__ == '__main__':

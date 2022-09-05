@@ -46,9 +46,10 @@ def pre_process(image_read):
     thresh = thresh.astype('uint8')
     plt.imshow(thresh)
     plt.show()
-    kernel = np.ones((5, 5), np.uint8)
+    kernel = np.ones((3, 5), np.uint8)
     corners = cv2.morphologyEx(thresh, cv2.MORPH_GRADIENT, kernel)
-
+    plt.imshow(corners)
+    plt.show()
     return thresh, corners
 
 
