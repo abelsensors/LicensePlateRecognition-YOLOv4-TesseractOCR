@@ -1,4 +1,3 @@
-import math
 import random
 
 import cv2
@@ -6,11 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import imutils
-from PIL.ImageColor import colormap
 from scipy.signal import savgol_filter
 import pandas as pd
-from sklearn import mixture
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 
 from prespective_rectification.pre_process import pre_process
 
@@ -20,7 +17,24 @@ def convert_theta_to_two_points(x, y, theta):
     y2 = y + 1000 * np.sin(theta)
     x1 = x - 1000 * np.cos(theta)
     y1 = y - 1000 * np.sin(theta)
-    return [x1, y1, x2, y2]
+    line = [x1, y1, x2, y2]
+    return line
+
+
+def convert_theta_rho_to_two_points(rho, theta):
+    if rho < 0:
+        rho *= -1
+        theta -= np.pi
+    a = np.cos(theta)
+    b = np.sin(theta)
+    x0 = a * rho
+    y0 = b * rho
+    x1 = int(x0 + 1000 * (-b))
+    y1 = int(y0 + 1000 * a)
+    x2 = int(x0 - 1000 * (-b))
+    y2 = int(y0 - 1000 * a)
+    line = [x1, y1, x2, y2]
+    return line
 
 
 def draw_lines(img, lines, labels=None, type_line="two_points"):
@@ -45,19 +59,7 @@ def draw_lines(img, lines, labels=None, type_line="two_points"):
             except:
                 line = line[0]
                 rho, theta = line
-
-            if rho < 0:
-                rho *= -1
-                theta -= np.pi
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            x1 = int(x0 + 1000 * (-b))
-            y1 = int(y0 + 1000 * a)
-            x2 = int(x0 - 1000 * (-b))
-            y2 = int(y0 - 1000 * a)
-            line = [x1, y1, x2, y2]
+            convert_theta_rho_to_two_points(rho, theta)
         elif type_line == "two_points":
             line = line[0]
         elif type_line == "theta":
@@ -104,8 +106,6 @@ def get_intersection(polynomial_coeff_list, type_intersection="rho_theta"):
         for j, _ in enumerate(polynomial_coeff_list):
             if i != j:
                 try:
-                    # x0 = -(left_line[1] - right_line[1]) / (left_line[0] - right_line[0])
-                    # y0 = x0 * left_line[0] + left_line[1]
                     x0, y0 = None, None
                     if type_intersection == "polynomial":
                         x0 = (polynomial_coeff_list[i] - polynomial_coeff_list[j]).roots()
@@ -142,8 +142,9 @@ def intersection_rho_theta(line1, line2):
 
 
 def two_point_intersection(line1, line2):
-    # line1 = [[line1[0], line1[1]], [line1[2], line1[3]]]
-    # line2 = [[line2[0], line2[1]], [line2[2], line2[3]]]
+    if len(line1) == 4:
+        line1 = [[line1[0], line1[1]], [line1[2], line1[3]]]
+        line2 = [[line2[0], line2[1]], [line2[2], line2[3]]]
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -428,27 +429,30 @@ def hough_lines_nicolas(image, cnts):
     kmeans = KMeans(n_clusters=4, init=startpts, n_init=1)
     kmeans.fit(clustering_parameters)
     averaged_lines = average_lines_clustered(clustering_parameters2, kmeans.labels_)
-    draw_lines(image, lines, kmeans.labels_, type_line="two_points")
     draw_lines(image, averaged_lines, type_line="theta")
-    return averaged_lines
+    out_lines = []
+    for line in averaged_lines:
+        x, y, theta = line
+        out_lines.append(convert_theta_to_two_points(x, y, theta))
+    list_intersections = get_intersection(out_lines, "two_point")
+    list_intersections = filter_intersections(image, list_intersections)
+
+    return list_intersections
 
 
 def average_lines_clustered(lines, labels):
-    filtered_lines = np.zeros((4, 3))
+    filtered_lines = [[] for _ in range(4)]
+    out_line = [[] for _ in range(4)]
     for i, line in enumerate(lines):
         label = labels[i]
-        filtered_lines[label] += line
+        filtered_lines[label].append(line)
     for i in range(4):
-        filtered_lines[i] /= np.count_nonzero(labels == i)
-    return filtered_lines
-
-
-def normalize(a, b, c):
-    norms = np.linalg.norm(np.array([a, b]), axis=0)
-    a = a / norms
-    b = b / norms
-    c = c / norms
-    return a, b, c
+        x = np.median(list(list(zip(*filtered_lines[i]))[0]))
+        y = np.median(list(list(zip(*filtered_lines[i]))[1]))
+        theta = np.average(list(list(zip(*filtered_lines[i]))[2]))
+        out_line[i] = [x, y, theta]
+        # it could be improved by differentiating horizontal and vertical lines
+    return out_line
 
 
 def order_points(destinations, predicted):
@@ -470,10 +474,10 @@ def main():
     height, width, _ = image.shape
     destination = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
     masked_image, cnts = pre_process(image)
-    hough_lines_nicolas(image, cnts)
+    intersections = hough_lines_nicolas(image, cnts)
 
     # intersections = abbrupt_changes_algorithm(image, masked_image)
-    intersections = hough_implementations(image, cnts)
+    # intersections = hough_implementations(image, cnts)
 
     intersections = order_points(destination, intersections)
     corners_points = np.float32(intersections)
