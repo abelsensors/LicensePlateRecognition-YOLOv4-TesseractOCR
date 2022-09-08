@@ -6,39 +6,65 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import imutils
+from PIL.ImageColor import colormap
 from scipy.signal import savgol_filter
 import pandas as pd
 from sklearn import mixture
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 
 from prespective_rectification.pre_process import pre_process
 
 
-def draw_lines(img, lines, thickness=1):
-    red = random.randint(0, 255)
-    green = random.randint(0, 255)
-    blue = random.randint(0, 255)
-    for line in lines:
-        try:
-            rho, theta = line
-        except:
-            line = line[0]
-            rho, theta = line
+def convert_theta_to_two_points(x, y, theta):
+    x2 = x + 1000 * np.cos(theta)
+    y2 = y + 1000 * np.sin(theta)
+    x1 = x - 1000 * np.cos(theta)
+    y1 = y - 1000 * np.sin(theta)
+    return [x1, y1, x2, y2]
 
-        if rho < 0:
-            rho *= -1
-            theta -= np.pi
-        a = np.cos(theta)
-        b = np.sin(theta)
-        x0 = a * rho
-        y0 = b * rho
-        x1 = int(x0 + 1000 * (-b))
-        y1 = int(y0 + 1000 * a)
-        x2 = int(x0 - 1000 * (-b))
-        y2 = int(y0 - 1000 * a)
-        line = [x1, y1, x2, y2]
+
+def draw_lines(img, lines, labels=None, type_line="two_points"):
+    for i, line in enumerate(lines):
+        red = 0
+        green = 0
+        blue = 0
+        if labels is None:
+            red = random.randint(0, 255)
+            green = random.randint(0, 255)
+            blue = random.randint(0, 255)
+        else:
+            if labels[i] == 0:
+                red = 255
+            elif labels[i] == 1:
+                green = 255
+            elif labels[i] == 2:
+                blue = 255
+        if type_line == "rho_theta":
+            try:
+                rho, theta = line
+            except:
+                line = line[0]
+                rho, theta = line
+
+            if rho < 0:
+                rho *= -1
+                theta -= np.pi
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * a)
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * a)
+            line = [x1, y1, x2, y2]
+        elif type_line == "two_points":
+            line = line[0]
+        elif type_line == "theta":
+            x, y, theta = line
+            line = convert_theta_to_two_points(x, y, theta)
         try:
-            cv2.line(img, (int(line[0]), int(line[1])), (int(line[2]), int(line[3])), [red, green, blue], thickness)
+            cv2.line(img, (int(line[0]), int(line[1])), (int(line[2]), int(line[3])), [red, green, blue], 1)
         except:
             pass
     plt.imshow(img)
@@ -357,8 +383,72 @@ def hough_implementations(image, cnts):
     draw_lines(image, kmeans.cluster_centers_)
 
 
-def apply_homography():
-    pass
+def gather_initial_points(image, points):
+    img_sz_x, img_sz_y, _ = image.shape
+    rand_points = np.array(points)  # your points
+    half_x = img_sz_x // 2
+    half_y = img_sz_y // 2
+    top_i = np.argmin(np.linalg.norm(rand_points[:, :2] - np.array([half_x, 0]), axis=1))  # top right corner
+    left_i = np.argmin(np.linalg.norm(rand_points[:, :2] - np.array([0, half_y]), axis=1))  # top left corner
+    right_i = np.argmin(
+        np.linalg.norm(rand_points[:, :2] - np.array([img_sz_x, half_y]), axis=1))  # bottom right corner
+    bottom_i = np.argmin(
+        np.linalg.norm(rand_points[:, :2] - np.array([half_x, img_sz_y]), axis=1))  # bottom left corner
+
+    top = rand_points[top_i]
+    left = rand_points[left_i]
+    right = rand_points[right_i]
+    bottom = rand_points[bottom_i]
+
+    corner_points = np.stack((top, left, right, bottom))
+    return corner_points
+
+
+def hough_lines_nicolas(image, cnts):
+    height, width, _ = image.shape
+
+    min_line_length = 10
+    max_line_gap = 10
+    lines = cv2.HoughLinesP(cnts, 1, np.pi / 180, 15, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    clustering_parameters = []
+    clustering_parameters2 = []
+    for line in lines:
+        for x1, y1, x2, y2 in line:
+            if x2 == x1:
+                theta = np.sign(y2 - y1) * np.pi / 2
+            else:
+                p = (y2 - y1) / (x2 - x1)
+                theta = np.arctan(p)
+            x = (x1 + x2) * 0.5
+            y = (y1 + y2) * 0.5
+            clustering_parameters.append([x, y, theta * 100])
+            clustering_parameters2.append([x, y, theta])
+
+    startpts = gather_initial_points(image, clustering_parameters)
+    kmeans = KMeans(n_clusters=4, init=startpts, n_init=1)
+    kmeans.fit(clustering_parameters)
+    averaged_lines = average_lines_clustered(clustering_parameters2, kmeans.labels_)
+    draw_lines(image, lines, kmeans.labels_, type_line="two_points")
+    draw_lines(image, averaged_lines, type_line="theta")
+    return averaged_lines
+
+
+def average_lines_clustered(lines, labels):
+    filtered_lines = np.zeros((4, 3))
+    for i, line in enumerate(lines):
+        label = labels[i]
+        filtered_lines[label] += line
+    for i in range(4):
+        filtered_lines[i] /= np.count_nonzero(labels == i)
+    return filtered_lines
+
+
+def normalize(a, b, c):
+    norms = np.linalg.norm(np.array([a, b]), axis=0)
+    a = a / norms
+    b = b / norms
+    c = c / norms
+    return a, b, c
 
 
 def order_points(destinations, predicted):
@@ -380,7 +470,11 @@ def main():
     height, width, _ = image.shape
     destination = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
     masked_image, cnts = pre_process(image)
-    intersections = abbrupt_changes_algorithm(image, masked_image)
+    hough_lines_nicolas(image, cnts)
+
+    # intersections = abbrupt_changes_algorithm(image, masked_image)
+    intersections = hough_implementations(image, cnts)
+
     intersections = order_points(destination, intersections)
     corners_points = np.float32(intersections)
     transformation_matrix = cv2.getPerspectiveTransform(corners_points, destination)
