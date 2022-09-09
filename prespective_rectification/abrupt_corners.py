@@ -9,6 +9,9 @@ from prespective_rectification.ploting import plot_points
 
 
 def gather_contours(edges):
+    """
+    Alternative way to gather the contours as numpy array
+    """
     rows = edges.shape[1]
     cols = edges.shape[0]
     new_corners = []
@@ -20,7 +23,11 @@ def gather_contours(edges):
 
 
 def select_points_by_segment(point_start, point_end, len_points):
-    if point_start > point_end:
+    """
+    Select the two middle points from the abrupt changes
+    """
+    if point_start > point_end:  # if the abrupt change is before ending the sequence we have to start from the end
+        #  until the firs point in the beginning
         moved_initial_point = len_points - point_start
         mid_point = (moved_initial_point + point_end) // 2
         difference = int((point_end - point_start) * 0.25)
@@ -37,13 +44,17 @@ def select_points_by_segment(point_start, point_end, len_points):
 
 
 def get_corners_abrupt_changes(cumulative_difference):
+    """
+    Gather each sequence of corners divided by the abrupt changes and return a list of 4 lists each
+    containing one side
+    """
     flag_off = True
     total_cumulative = []
     for i, element in enumerate(cumulative_difference):
 
         if not element:
 
-            if flag_off:
+            if flag_off:  # meanwhile there is non-abrupt changes keep gatering points
                 current_cumulative = []
                 counter = 0
 
@@ -56,6 +67,7 @@ def get_corners_abrupt_changes(cumulative_difference):
                 total_cumulative.append(current_cumulative)
                 flag_off = False
         else:
+            # Once there is an abrupt change check for the next one
             flag_off = True
     total_cumulative = sorted(total_cumulative, key=lambda l: (len(l), l))
     quadratic_changes = []
@@ -68,6 +80,11 @@ def get_corners_abrupt_changes(cumulative_difference):
 
 
 def abrupt_changes_algorithm(image, masked_image):
+    """
+    Get the contours, extract the sum of difference between each point given one axis, indentify the abrupt changes
+    in the time series, select two points for each abrupt change and gather the lines of the contours that traces
+    this two lines
+    """
     # gather and clean contours
     cnts = cv2.findContours(masked_image.astype("uint8"), cv2.RETR_EXTERNAL,
                             1)
@@ -95,9 +112,6 @@ def abrupt_changes_algorithm(image, masked_image):
     smoothed_difference_y = savgol_filter(list_diference_y, 13, 5)  # window size 13, polynomial order 5
     smoothed_difference_x = savgol_filter(list_diference_x, 13, 5)  # window size 13, polynomial order 5
 
-    # plt.plot(y_range, smoothed_difference_y)
-    # plt.show()
-
     plt.plot(y_range, smoothed_difference_x)
     plt.show()
 
@@ -124,8 +138,6 @@ def abrupt_changes_algorithm(image, masked_image):
     polynomial_coeff_list = []
     points_corners_lines = []
     for point in points_abrupt:
-        # plot_points(cleaned_cnts[initial_point:point], image)
-
         index = select_points_by_segment(initial_point, point, len(time_series_abrupt_changes))
         lower_points = cnts[0][index[0]][0]
         upper_points = cnts[0][index[1]][0]

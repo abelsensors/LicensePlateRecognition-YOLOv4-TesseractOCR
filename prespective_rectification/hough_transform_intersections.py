@@ -62,20 +62,22 @@ def gather_initial_points(image, points):
     as easily as a randomized start
     """
     img_sz_x, img_sz_y, _ = image.shape
-    rand_points = np.array(points)  # your points
+    numpy_points = np.array(points)  # your points
     half_x = img_sz_x // 2
     half_y = img_sz_y // 2
-    top_i = np.argmin(np.linalg.norm(rand_points[:, :2] - np.array([half_x, 0]), axis=1))  # top right corner
-    left_i = np.argmin(np.linalg.norm(rand_points[:, :2] - np.array([0, half_y]), axis=1))  # top left corner
+    # Set a point using the linear algebra function given each set of point and the offset to the direction of the
+    # border
+    top_i = np.argmin(np.linalg.norm(numpy_points[:, :2] - np.array([half_x, 0]), axis=1))  # top right corner
+    left_i = np.argmin(np.linalg.norm(numpy_points[:, :2] - np.array([0, half_y]), axis=1))  # top left corner
     right_i = np.argmin(
-        np.linalg.norm(rand_points[:, :2] - np.array([img_sz_x, half_y]), axis=1))  # bottom right corner
+        np.linalg.norm(numpy_points[:, :2] - np.array([img_sz_x, half_y]), axis=1))  # bottom right corner
     bottom_i = np.argmin(
-        np.linalg.norm(rand_points[:, :2] - np.array([half_x, img_sz_y]), axis=1))  # bottom left corner
+        np.linalg.norm(numpy_points[:, :2] - np.array([half_x, img_sz_y]), axis=1))  # bottom left corner
 
-    top = rand_points[top_i]
-    left = rand_points[left_i]
-    right = rand_points[right_i]
-    bottom = rand_points[bottom_i]
+    top = numpy_points[top_i]
+    left = numpy_points[left_i]
+    right = numpy_points[right_i]
+    bottom = numpy_points[bottom_i]
 
     corner_points = np.stack((top, left, right, bottom))
     return corner_points
