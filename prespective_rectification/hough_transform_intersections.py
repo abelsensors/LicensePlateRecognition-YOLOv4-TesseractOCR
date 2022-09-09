@@ -28,11 +28,7 @@ def hough_lines_main(image, contours):
     draw_lines(image, averaged_lines, type_line="theta")
 
     # Convert lines to 2d x y
-    out_lines = []
-    for line in averaged_lines:
-        x, y, theta = line
-        out_lines.append(convert_theta_to_two_points(x, y, theta))
-
+    out_lines = [convert_theta_to_two_points(x, y, theta) for x, y, theta in averaged_lines]
     return out_lines
 
 
@@ -97,6 +93,6 @@ def average_lines_clustered(lines, labels):
         x = np.median(list(list(zip(*filtered_lines[i]))[0]))
         y = np.median(list(list(zip(*filtered_lines[i]))[1]))
         theta = np.average(list(list(zip(*filtered_lines[i]))[2]))
-        out_line[i] = [x, y, theta]
+        out_line[i] = (x, y, theta)
         # it could be improved by differentiating horizontal and vertical lines
     return out_line

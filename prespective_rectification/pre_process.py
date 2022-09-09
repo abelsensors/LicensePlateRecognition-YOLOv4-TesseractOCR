@@ -4,14 +4,20 @@ import numpy as np
 from skimage.measure import label
 
 
-def get_largest_cc(segmentation_area):
+def get_largest_connected_contours(segmentation_area):
+    """
+    Select the biggest region of the image that correspond to a connected contour
+    """
     labels = label(1 - segmentation_area)
-    assert (labels.max() != 0)  # assume at least 1 CC
+    assert (labels.max() != 0)  # assume at least 1 connected contour
     largest_cc = labels == np.argmax(np.bincount(labels.flat)[1:]) + 1
     return largest_cc * 255
 
 
 def pre_process(image_read):
+    """
+    Pipeline to process and clean the image to a bynarized contour
+    """
     # Convert to greyscale
     gray = cv2.cvtColor(image_read, cv2.COLOR_BGR2GRAY)
 
@@ -42,7 +48,7 @@ def pre_process(image_read):
     plt.show()
 
     # Get biggest contours area
-    thresh = get_largest_cc(thresh)
+    thresh = get_largest_connected_contours(thresh)
     thresh = thresh.astype('uint8')
     plt.imshow(thresh)
     plt.show()
@@ -54,5 +60,8 @@ def pre_process(image_read):
 
 
 def get_masked_image(image, thresh):
-    res = cv2.bitwise_and(image, image, mask=thresh)
-    return res
+    """
+    Used to gather only the area of the mask where we want to work
+    """
+    result = cv2.bitwise_and(image, image, mask=thresh)
+    return result

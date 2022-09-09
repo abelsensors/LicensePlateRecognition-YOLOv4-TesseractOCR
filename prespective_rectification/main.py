@@ -9,7 +9,7 @@ from prespective_rectification.abrupt_corners import abrupt_changes_algorithm
 from prespective_rectification.hough_transform_intersections import hough_lines_main
 from prespective_rectification.ploting import plot_points
 from prespective_rectification.pre_process import pre_process
-from prespective_rectification.utils import order_points, filter_intersections, get_intersection
+from prespective_rectification.utils import sort_points, filter_intersections, get_intersection
 
 flags.DEFINE_string('algorithm', 'hough_lines', 'hough_lines or abrupt_changes')
 flags.DEFINE_string('image', 'dataset/plate.png', 'path to input image')
@@ -38,7 +38,7 @@ def main(_argv):
 
     intersections = get_intersection(lines, "two_point")
     filtered_intersections = filter_intersections(image, intersections)
-    ordered_intersections = order_points(destination, filtered_intersections)
+    ordered_intersections = sort_points(destination, filtered_intersections)
     corners_points = np.float32(ordered_intersections)
 
     plot_points(filtered_intersections, image)

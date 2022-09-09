@@ -25,6 +25,10 @@ def gather_contours(edges):
 def select_points_by_segment(point_start, point_end, len_points):
     """
     Select the two middle points from the abrupt changes
+    @param point_start: corner where the first abrupt change is detected
+    @param point_end: corner where the next abrupt change is detected related next to the point_start
+    @param len_points: counter of total amount of corners to calculate the abrupt changes that connects the begging of
+    the list with the end
     """
     if point_start > point_end:  # if the abrupt change is before ending the sequence we have to start from the end
         #  until the firs point in the beginning
@@ -109,23 +113,27 @@ def abrupt_changes_algorithm(image, masked_image):
         previous_element = element
     y_range = range(len(list_diference_x))
 
-    smoothed_difference_y = savgol_filter(list_diference_y, 13, 5)  # window size 13, polynomial order 5
-    smoothed_difference_x = savgol_filter(list_diference_x, 13, 5)  # window size 13, polynomial order 5
+    window_size = 13
+    polynomial_order = 5
+    smoothed_difference_y = savgol_filter(list_diference_y, window_size, polynomial_order)
+    smoothed_difference_x = savgol_filter(list_diference_x, window_size, polynomial_order)
 
     plt.plot(y_range, smoothed_difference_x)
     plt.show()
 
     # Sliding window
-    s = pd.Series(smoothed_difference_x)
-    d = pd.Series(s.values[1:] - s.values[:-1], index=s.index[:-1]).abs()
+    series_smoothed = pd.Series(smoothed_difference_x)
 
-    a = .7
-    m = d.max()
-    print(d > m * a)
+    time_series_parsed = pd.Series(series_smoothed.values[1:] - series_smoothed.values[:-1],
+                                   index=series_smoothed.index[:-1]).abs()
 
-    r = d.rolling(3, min_periods=1, win_type='parzen').sum()
-    n = r.max()
-    time_series_abrupt_changes = r > n * a
+    threshold_window = .7
+    max_time_series = time_series_parsed.max()
+    print(time_series_parsed > max_time_series * threshold_window)
+
+    rolling_windowed = time_series_parsed.rolling(3, min_periods=1, win_type='parzen').sum()
+    max_rolling_windowed_series = rolling_windowed.max()
+    time_series_abrupt_changes = rolling_windowed > max_rolling_windowed_series * threshold_window
 
     points_abrupt = get_corners_abrupt_changes(time_series_abrupt_changes)
 
