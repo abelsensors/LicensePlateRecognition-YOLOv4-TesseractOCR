@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from prespective_rectification.abrupt_corners import abrupt_changes_algorithm
-from prespective_rectification.hough_transform_intersections import hough_lines
+from prespective_rectification.hough_transform_intersections import hough_lines_main
 from prespective_rectification.ploting import plot_points
 from prespective_rectification.pre_process import pre_process
 from prespective_rectification.utils import order_points, filter_intersections, get_intersection
@@ -19,7 +19,7 @@ def main():
 
     algorithm = "hough_lines"
     if algorithm == "hough_lines":
-        lines = hough_lines(image, cnts)
+        lines = hough_lines_main(image, cnts)
     elif algorithm == "abrupt_changes":
         lines = abrupt_changes_algorithm(image, masked_image)
     else:

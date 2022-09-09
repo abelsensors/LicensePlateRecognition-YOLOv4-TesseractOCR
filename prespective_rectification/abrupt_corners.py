@@ -8,6 +8,17 @@ from scipy.signal import savgol_filter
 from prespective_rectification.ploting import plot_points
 
 
+def gather_contours(edges):
+    rows = edges.shape[1]
+    cols = edges.shape[0]
+    new_corners = []
+    for x in range(0, cols - 1):
+        for y in range(0, rows - 1):
+            if edges[x, y]:
+                new_corners.append(np.array([np.array([x, y])]))
+    return np.array(new_corners)
+
+
 def select_points_by_segment(point_start, point_end, len_points):
     if point_start > point_end:
         moved_initial_point = len_points - point_start
@@ -68,7 +79,7 @@ def abrupt_changes_algorithm(image, masked_image):
         cleaned_cnts.append(list(point_element))
     plot_points(cleaned_cnts, image)
 
-    # project the contours in a sum of diference list
+    # project the contours in a sum of difference list
     previous_element = None
     list_diference_x, list_diference_y = [], []
     diference_sum_x, diference_sum_y = 0, 0
@@ -90,6 +101,7 @@ def abrupt_changes_algorithm(image, masked_image):
     plt.plot(y_range, smoothed_difference_x)
     plt.show()
 
+    # Sliding window
     s = pd.Series(smoothed_difference_x)
     d = pd.Series(s.values[1:] - s.values[:-1], index=s.index[:-1]).abs()
 

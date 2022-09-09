@@ -56,14 +56,3 @@ def pre_process(image_read):
 def get_masked_image(image, thresh):
     res = cv2.bitwise_and(image, image, mask=thresh)
     return res
-
-
-def gather_contours(edges):
-    rows = edges.shape[1]
-    cols = edges.shape[0]
-    new_corners = []
-    for x in range(0, cols - 1):
-        for y in range(0, rows - 1):
-            if edges[x, y]:
-                new_corners.append(np.array([np.array([x, y])]))
-    return np.array(new_corners)
