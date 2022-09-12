@@ -119,8 +119,8 @@ def sort_points(destinations, predicted):
             distances.append(np.sqrt((destination[0] - prediction[0]) ** 2 + (destination[1] - prediction[1]) ** 2))
         index = distances.index(min(distances))
         ordered_predicted.append(predicted[index])
-    # IDEA: calculate the closest corner for each prediction instead of the closest prediction for each corner.
-    # IDEA: Force each corner having only one prediction
+    # TODO : calculate the closest corner for each prediction instead of the closest prediction for each corner.
+    # TODO : Force each corner having only one prediction
     return ordered_predicted
 
 

@@ -47,8 +47,8 @@ def get_parameters_clustering(lines):
                 theta = np.arctan(p)
             x = (x1 + x2) * 0.5
             y = (y1 + y2) * 0.5
-            # Instead of using x and y use an intersection of the 2d points line to the 0 x axis or y axis and
-            # instead of using Theta use the slope P
+            # TODO : Instead of using x and y use an intersection of the 2d points line to the 0 x axis or y axis and
+            # TODO : instead of using Theta use the slope P
             clustering_parameters_modified.append([x, y, theta * 100])
             clustering_parameters.append([x, y, theta])
     return clustering_parameters_modified, clustering_parameters
@@ -95,8 +95,8 @@ def average_lines_clustered(lines, labels):
         # Gather the middle point of the clustered data of x and y axis by using the median
         x_intercept = np.median(list(list(zip(*filtered_lines[j]))[0]))
         y_intercept = np.median(list(list(zip(*filtered_lines[j]))[1]))
-        # IDEA: we can try using median with theta too
+        # TODO : we can try using median with theta too
         theta = np.average(list(list(zip(*filtered_lines[h]))[2]))
         out_line[j] = (x_intercept, y_intercept, theta)
-        # IDEA: it could be improved by differentiating horizontal and vertical lines
+        # TODO : it could be improved by differentiating horizontal and vertical lines
     return out_line

@@ -87,7 +87,7 @@ def get_corners_abrupt_changes(cumulative_difference):
         else:
             # Once there is an abrupt change check for the next one
             is_new_sequence = True
-    # New idea: Sort on the mean cumulative change of the points that meet the threshold
+    # TODO : Sort on the mean cumulative change of the points that meet the threshold
     total_cumulative = sorted(total_cumulative, key=lambda l: (len(l), l))
     quadratic_changes = []
 
