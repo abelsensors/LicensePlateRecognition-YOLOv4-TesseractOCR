@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 
-from prespective_rectification.ploting import draw_lines
-from prespective_rectification.utils import convert_theta_to_two_points
+from perspective_rectification.ploting import draw_lines
+from perspective_rectification.utils import convert_theta_to_two_points
 
 
 def hough_lines_main(image, contours):
@@ -18,12 +18,12 @@ def hough_lines_main(image, contours):
     max_line_gap = 10
     lines = cv2.HoughLinesP(contours, 1, np.pi / 180, 15, minLineLength=min_line_length, maxLineGap=max_line_gap)
 
-    clustering_parameters_normalized, clustering_parameters = get_parameters_clustering(lines)
+    clustering_parameters_modified, clustering_parameters = get_parameters_clustering(lines)
 
     # Fit clustering
-    start_pts = gather_initial_points(image, clustering_parameters_normalized)
+    start_pts = gather_initial_points(image, clustering_parameters_modified)
     kmeans = KMeans(n_clusters=4, init=start_pts, n_init=1)
-    kmeans.fit(clustering_parameters_normalized)
+    kmeans.fit(clustering_parameters_modified)
     averaged_lines = average_lines_clustered(clustering_parameters, kmeans.labels_)
     draw_lines(image, averaged_lines, type_line="theta")
 
@@ -36,7 +36,7 @@ def get_parameters_clustering(lines):
     """
     Merge x and y and extract theta from the slope of the difference of x times y
     """
-    clustering_parameters_normalized = []
+    clustering_parameters_modified = []
     clustering_parameters = []
     for line in lines:
         for x1, y1, x2, y2 in line:
@@ -47,9 +47,11 @@ def get_parameters_clustering(lines):
                 theta = np.arctan(p)
             x = (x1 + x2) * 0.5
             y = (y1 + y2) * 0.5
-            clustering_parameters_normalized.append([x, y, theta * 100])
+            # Instead of using x and y use an intersection of the 2d points line to the 0 x axis or y axis and
+            # instead of using Theta use the slope P
+            clustering_parameters_modified.append([x, y, theta * 100])
             clustering_parameters.append([x, y, theta])
-    return clustering_parameters_normalized, clustering_parameters
+    return clustering_parameters_modified, clustering_parameters
 
 
 def gather_initial_points(image, points):
@@ -89,10 +91,12 @@ def average_lines_clustered(lines, labels):
     for i, line in enumerate(lines):
         label = labels[i]
         filtered_lines[label].append(line)  # gather lines by each label
-    for i in range(4):
-        x = np.median(list(list(zip(*filtered_lines[i]))[0]))
-        y = np.median(list(list(zip(*filtered_lines[i]))[1]))
-        theta = np.average(list(list(zip(*filtered_lines[i]))[2]))
-        out_line[i] = (x, y, theta)
-        # it could be improved by differentiating horizontal and vertical lines
+    for j in range(4):
+        # Gather the middle point of the clustered data of x and y axis by using the median
+        x_intercept = np.median(list(list(zip(*filtered_lines[j]))[0]))
+        y_intercept = np.median(list(list(zip(*filtered_lines[j]))[1]))
+        # IDEA: we can try using median with theta too
+        theta = np.average(list(list(zip(*filtered_lines[h]))[2]))
+        out_line[j] = (x_intercept, y_intercept, theta)
+        # IDEA: it could be improved by differentiating horizontal and vertical lines
     return out_line

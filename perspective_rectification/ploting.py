@@ -2,7 +2,7 @@ import random
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from prespective_rectification.utils import convert_theta_to_two_points, convert_theta_rho_to_two_points
+from perspective_rectification.utils import convert_theta_to_two_points, convert_theta_rho_to_two_points
 
 
 def plot_points(points, image):

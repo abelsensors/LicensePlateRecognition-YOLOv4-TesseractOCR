@@ -5,11 +5,11 @@ import numpy as np
 from absl import app, flags
 from absl.flags import FLAGS
 
-from prespective_rectification.abrupt_corners import abrupt_changes_algorithm
-from prespective_rectification.hough_transform_intersections import hough_lines_main
-from prespective_rectification.ploting import plot_points
-from prespective_rectification.pre_process import pre_process
-from prespective_rectification.utils import sort_points, filter_intersections, get_intersection
+from perspective_rectification.abrupt_corners import abrupt_changes_algorithm
+from perspective_rectification.hough_transform_intersections import hough_lines_main
+from perspective_rectification.ploting import plot_points
+from perspective_rectification.pre_process import pre_process
+from perspective_rectification.utils import sort_points, filter_intersections, get_intersection
 
 flags.DEFINE_string('algorithm', 'hough_lines', 'hough_lines or abrupt_changes')
 flags.DEFINE_string('image', 'dataset/plate.png', 'path to input image')

@@ -107,6 +107,9 @@ def two_point_intersection(line1, line2):
 def sort_points(destinations, predicted):
     """
     Sort points by getting the minimum distance for each point to each corner of the image
+    @param destinations: Four initial corners of the image (this can be improved by saving the A/R of the license plate
+    and applying afterwards
+    @param predicted: The corners of the license plate gathered by the intersection of the 4 lines
     """
     ordered_predicted = []
 
@@ -116,6 +119,8 @@ def sort_points(destinations, predicted):
             distances.append(np.sqrt((destination[0] - prediction[0]) ** 2 + (destination[1] - prediction[1]) ** 2))
         index = distances.index(min(distances))
         ordered_predicted.append(predicted[index])
+    # IDEA: calculate the closest corner for each prediction instead of the closest prediction for each corner.
+    # IDEA: Force each corner having only one prediction
     return ordered_predicted
 
 

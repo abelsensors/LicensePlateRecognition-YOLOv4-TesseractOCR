@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from scipy.signal import savgol_filter
 
-from prespective_rectification.ploting import plot_points
+from perspective_rectification.ploting import plot_points
 
 
 def gather_contours(edges):
@@ -52,27 +52,42 @@ def get_corners_abrupt_changes(cumulative_difference):
     Gather each sequence of corners divided by the abrupt changes and return a list of 4 lists each
     containing one side
     """
-    flag_off = True
+    # Sliding window
+    series_smoothed = pd.Series(cumulative_difference)
+
+    time_series_parsed = pd.Series(series_smoothed.values[1:] - series_smoothed.values[:-1],
+                                   index=series_smoothed.index[:-1]).abs()
+
+    threshold_window = .7
+    max_time_series = time_series_parsed.max()
+    print(time_series_parsed > max_time_series * threshold_window)
+
+    rolling_windowed = time_series_parsed.rolling(3, min_periods=1, win_type='parzen').sum()
+    max_rolling_windowed_series = rolling_windowed.max()
+    abrupt_detections = rolling_windowed > max_rolling_windowed_series * threshold_window
+
+    is_new_sequence = True
     total_cumulative = []
-    for i, element in enumerate(cumulative_difference):
+    for i, element in enumerate(abrupt_detections):
 
         if not element:
 
-            if flag_off:  # meanwhile there is non-abrupt changes keep gatering points
+            if is_new_sequence:  # meanwhile there is non-abrupt changes keep gathering points
                 current_cumulative = []
                 counter = 0
 
-                for series_contigous in cumulative_difference[i:]:
+                for series_contigous in abrupt_detections[i:]:
                     if series_contigous:
                         break
                     counter += 1
 
                     current_cumulative.append(i + counter)
                 total_cumulative.append(current_cumulative)
-                flag_off = False
+                is_new_sequence = False
         else:
             # Once there is an abrupt change check for the next one
-            flag_off = True
+            is_new_sequence = True
+    # New idea: Sort on the mean cumulative change of the points that meet the threshold
     total_cumulative = sorted(total_cumulative, key=lambda l: (len(l), l))
     quadratic_changes = []
 
@@ -80,7 +95,7 @@ def get_corners_abrupt_changes(cumulative_difference):
         quadratic_changes.extend([change[0], change[len(change) - 1]])
     quadratic_changes.sort()
 
-    return quadratic_changes
+    return quadratic_changes, abrupt_detections
 
 
 def abrupt_changes_algorithm(image, masked_image):
@@ -121,21 +136,7 @@ def abrupt_changes_algorithm(image, masked_image):
     plt.plot(y_range, smoothed_difference_x)
     plt.show()
 
-    # Sliding window
-    series_smoothed = pd.Series(smoothed_difference_x)
-
-    time_series_parsed = pd.Series(series_smoothed.values[1:] - series_smoothed.values[:-1],
-                                   index=series_smoothed.index[:-1]).abs()
-
-    threshold_window = .7
-    max_time_series = time_series_parsed.max()
-    print(time_series_parsed > max_time_series * threshold_window)
-
-    rolling_windowed = time_series_parsed.rolling(3, min_periods=1, win_type='parzen').sum()
-    max_rolling_windowed_series = rolling_windowed.max()
-    time_series_abrupt_changes = rolling_windowed > max_rolling_windowed_series * threshold_window
-
-    points_abrupt = get_corners_abrupt_changes(time_series_abrupt_changes)
+    points_abrupt, abrupt_detections = get_corners_abrupt_changes(smoothed_difference_x)
 
     # Get the lines of the borders
     if len(points_abrupt) == 4:
@@ -146,7 +147,7 @@ def abrupt_changes_algorithm(image, masked_image):
     polynomial_coeff_list = []
     points_corners_lines = []
     for point in points_abrupt:
-        index = select_points_by_segment(initial_point, point, len(time_series_abrupt_changes))
+        index = select_points_by_segment(initial_point, point, len(abrupt_detections))
         lower_points = cnts[0][index[0]][0]
         upper_points = cnts[0][index[1]][0]
         two_points_list.append([lower_points, upper_points])
