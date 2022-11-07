@@ -15,13 +15,11 @@ from ocr.utils import resize_aspect_ratio
 
 flags.DEFINE_string('algorithm', 'background_substraction', 'background_substraction or multi_character_detection or '
                                                             'single_character_detection or simple')
-flags.DEFINE_string('image_folder', "data/dataset/plates/generic", 'path to input folder')
+flags.DEFINE_string('image_folder', "data/dataset/plates/belgium/croped", 'path to input folder')
 flags.DEFINE_integer('max_image_size', 1500, 'maximum size of the resized image given any axis')
 
 
 def main(_argv):
-
-
     # Read image
     path = FLAGS.image_folder
     os.chdir(path)

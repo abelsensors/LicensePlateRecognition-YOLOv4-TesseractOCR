@@ -9,8 +9,15 @@ import matplotlib.pyplot as plt
 
 
 class SingleCharacterRecognition:
+    """
+    Clean the image and extract individual characters in order to apply tesseract ocr treating the image as an
+    individual character
+    """
     @staticmethod
     def reduce_colors(img, kernel):
+        """
+        Cluster all the colors so during the cleaning with the k more prominent ones
+        """
         img_z = img.reshape((-1, 3))
 
         # convert to np.float32
@@ -28,6 +35,9 @@ class SingleCharacterRecognition:
         return res2
 
     def clean_image(self, img):
+        """
+        Apply some morphological operations to clean the image for the propous of extracting individual characters
+        """
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         resized_img = resize_aspect_ratio(gray_img)
         resized_img = cv2.GaussianBlur(resized_img, (5, 5), 0)
@@ -45,27 +55,11 @@ class SingleCharacterRecognition:
         return mask
 
     @staticmethod
-    def get_area(bw):
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 1))
-        connected = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, kernel)
-        # using RETR_EXTERNAL instead of RETR_CCOMP
-        contours, hierarchy = cv2.findContours(connected.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        # For opencv 3+ comment the previous line and uncomment the following line
-        # _, contours, hierarchy = cv2.findContours(connected.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-        mask = np.zeros(bw.shape, dtype=np.uint8)
-
-        for idx in range(len(contours)):
-            x, y, w, h = cv2.boundingRect(contours[idx])
-            mask[y:y + h, x:x + w] = 0
-            cv2.drawContours(mask, contours, idx, (255, 255, 255), -1)
-            r = float(cv2.countNonZero(mask[y:y + h, x:x + w])) / (w * h)
-
-            if r > 0.45 and w > 8 and h > 8:
-                cv2.rectangle(bw, (x, y), (x + w - 1, y + h - 1), (0, 255, 0), 2)
-
-    @staticmethod
     def extract_characters(img):
+        """
+        Select those areas where there is rectangles that matches the desired shape and extract it as a individual
+        characters
+        """
         bw_image = cv2.bitwise_not(img)
 
         contours, _ = cv2.findContours(bw_image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -96,6 +90,9 @@ class SingleCharacterRecognition:
 
     @staticmethod
     def highlight_characters(img, chars):
+        """
+        Print a bounding box around the characters extracted
+        """
         output_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         for bbox, char_img in chars:
             x, y, w, h = bbox

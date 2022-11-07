@@ -41,19 +41,10 @@ class TesseractOcr:
         # return the built options string
         return options
 
-    @staticmethod
-    def cleanup_text(text):
-        """
-        Strip out non-ASCII text, we can draw the text on the image using OpenCV
-        """
-        return "".join([c if ord(c) < 128 else "" for c in text]).strip()
-
     def run(self, lp):
         """
         Run tesseract ocr from pytesseract and clean the output
         """
         lp_text = pytesseract.image_to_string(lp, config=self.options)
         lp_text = re.sub('[\W_]+', '', lp_text)
-        if self.cleanup:
-            lp_text = self.cleanup_text(lp_text)
         return lp_text

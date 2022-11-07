@@ -25,7 +25,8 @@ def remove_shades(image):
     """
     Remove shadowing of the lights of the image by applying normalization.
     TODO: this method needs to be improved, results seems to be in the lower side for some scenarios,
-    TODO: might be interesting using it when the background extraction fails
+    TODO: might be interesting using it when the background extraction fails. The next paper should improve this
+    TODO: scenario  https://arxiv.org/pdf/1710.05073.pdf
     """
     rgb_planes = cv2.split(image)
 
