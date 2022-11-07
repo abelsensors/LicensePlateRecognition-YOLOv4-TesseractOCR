@@ -36,7 +36,7 @@ class SingleCharacterRecognition:
 
     def clean_image(self, img):
         """
-        Apply some morphological operations to clean the image for the propous of extracting individual characters
+        Apply some morphological operations to clean the image for the purpose of extracting individual characters
         """
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         resized_img = resize_aspect_ratio(gray_img)
