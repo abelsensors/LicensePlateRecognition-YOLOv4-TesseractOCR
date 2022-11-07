@@ -7,7 +7,10 @@ from skimage.segmentation import clear_border
 
 
 class PyImageSearchANPR:
-    def __init__(self, debug=False):
+    def __init__(self, min_ar=4, max_ar=5, debug=False):
+        self.min_ar = min_ar
+        self.max_ar = max_ar
+
         self.debug = debug
 
     @staticmethod
@@ -17,9 +20,12 @@ class PyImageSearchANPR:
         plt.show()
 
     def locate_license_plate_candidates(self, gray, keep=5):
+        """
+        Locate the region of interest given the contrast of the text as a foreground from the white or more clear
+        background
+        """
         # perform a blackhat morphological operation that will allow
         # us to reveal dark regions (i.e., text) on light backgrounds
-        # (i.e., the license plate itself)
 
         rect_kern = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
         blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, rect_kern)
@@ -38,7 +44,7 @@ class PyImageSearchANPR:
         # image in the x-direction and then scale the result back to
         # the range [0, 255]
         grad_x = cv2.Sobel(blackhat, ddepth=cv2.CV_32F,
-                          dx=1, dy=0, ksize=-1)
+                           dx=1, dy=0, ksize=-1)
         grad_x = np.absolute(grad_x)
         (minVal, maxVal) = (np.min(grad_x), np.max(grad_x))
         grad_x = 255 * ((grad_x - minVal) / (maxVal - minVal))
@@ -61,7 +67,7 @@ class PyImageSearchANPR:
         thresh = cv2.bitwise_and(thresh, thresh, mask=light)
         thresh = cv2.dilate(thresh, None, iterations=2)
         thresh = cv2.erode(thresh, None, iterations=1)
-        self.debug_imshow("Final", thresh, waitKey=True)
+        self.debug_imshow("Final", thresh)
         # find contours in the thresholded image and sort them by
         # their size in descending order, keeping only the largest
         # ones
@@ -76,6 +82,9 @@ class PyImageSearchANPR:
         return cnts
 
     def locate_license_plate(self, gray, candidates, clear_border_flag=False):
+        """
+        Filter out the regions that have wierd aspect ratio and keep the closer to a license plate one
+        """
         # initialize the license plate contour and ROI
         lp_cnt = None
         roi = None
@@ -87,7 +96,7 @@ class PyImageSearchANPR:
             ar = w / float(h)
             # check to see if the aspect ratio is rectangular
 
-            if self.minAR <= ar <= self.maxAR:
+            if self.max_ar <= ar <= self.max_ar:
                 # store the license plate contour and extract the
                 # license plate from the grayscale image and then
                 # threshold it
@@ -104,7 +113,7 @@ class PyImageSearchANPR:
                 # from the loop early since we have found the license
                 # plate region
                 self.debug_imshow("License Plate", license_plate)
-                self.debug_imshow("ROI", roi, waitKey=True)
+                self.debug_imshow("ROI", roi)
                 break
 
         # return a 2-tuple of the license plate ROI and the contour

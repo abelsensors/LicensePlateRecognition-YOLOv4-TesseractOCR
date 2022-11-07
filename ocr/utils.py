@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 
 
 def resize_aspect_ratio(gray_img, max_shape=1500):
+    """
+    Resize the image given the biggest size of any axis mantaining the aspect rate
+    """
     x_shape, y_shape = gray_img.shape
     if x_shape >= y_shape:
         y_shape = int((1 - ((x_shape - max_shape) / x_shape)) * y_shape)
@@ -19,6 +22,11 @@ def resize_aspect_ratio(gray_img, max_shape=1500):
 
 
 def remove_shades(image):
+    """
+    Remove shadowing of the lights of the image by applying normalization.
+    TODO: this method needs to be improved, results seems to be in the lower side for some scenarios,
+    TODO: might be interesting using it when the background extraction fails
+    """
     rgb_planes = cv2.split(image)
 
     result_planes = []

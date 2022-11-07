@@ -10,16 +10,15 @@ import matplotlib.pyplot as plt
 
 class SingleCharacterRecognition:
     @staticmethod
-    def reduce_colors(img, n):
-        Z = img.reshape((-1, 3))
+    def reduce_colors(img, kernel):
+        img_z = img.reshape((-1, 3))
 
         # convert to np.float32
-        Z = np.float32(Z)
+        img_z = np.float32(img_z)
 
         # define criteria, number of clusters(K) and apply kmeans()
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        K = n
-        ret, label, center = cv2.kmeans(Z, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+        ret, label, center = cv2.kmeans(img_z, kernel, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
         # Now convert back into uint8, and make original image
         center = np.uint8(center)
@@ -105,6 +104,9 @@ class SingleCharacterRecognition:
         return output_img
 
     def run(self, image):
+        """
+        Run the extraction of the characters individually and run pytesseract for each one
+        """
 
         image = self.clean_image(image)
         clean_img, chars = self.extract_characters(image)
