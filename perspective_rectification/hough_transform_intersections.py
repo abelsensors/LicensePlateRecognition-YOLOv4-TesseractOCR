@@ -93,10 +93,10 @@ def average_lines_clustered(lines, labels):
         filtered_lines[label].append(line)  # gather lines by each label
     for j in range(4):
         # Gather the middle point of the clustered data of x and y axis by using the median
-        x_intercept = np.median(list(list(zip(*filtered_lines[j]))[0]))
-        y_intercept = np.median(list(list(zip(*filtered_lines[j]))[1]))
+        x_intercept = np.average([list(zip(*filtered_lines[j]))[0]])
+        y_intercept = np.average([list(zip(*filtered_lines[j]))[1]])
         # TODO : we can try using median with theta too
-        theta = np.average(list(list(zip(*filtered_lines[h]))[2]))
+        theta = np.average([list(zip(*filtered_lines[j]))[2]])
         out_line[j] = (x_intercept, y_intercept, theta)
         # TODO : it could be improved by differentiating horizontal and vertical lines
     return out_line
